@@ -1,0 +1,196 @@
+library(data.table)
+library(dplyr)
+library(tidyverse)
+library(readxl)
+library(openxlsx)
+library(ggplot2)
+library(lubridate)
+library(ggpubr)
+
+
+setwd(r"[C:\Users\jc09975\Desktop\Model Validation\CHRM Model\2023]")
+Data1 <- read_excel("Segmentation Check_MRM.xlsx", sheet = "LAS")
+###Create Loan Age variable
+Data1 <- Data1 %>% mutate('Report Date' = as.Date("2022-11-30"))
+Data1$'Loan Age' <- interval(Data1$`Orig. Date`, Data1$`Report Date`) %/% months(1)
+
+## CRE Segmentation List -------------------------------------------------
+list[]
+CRE_Seg <- list(CRE_Fixed, CRE_Hybrid, CRE_Prime, CRE_Libor, CRE_MTA, CRE_SOFR)
+CRE_Seg_Name <- list("CRE_Fixed", "CRE_Hybrid", "CRE_Prime", "CRE_Libor", "CRE_MTA", "CRE_SOFR")
+
+## CRE Segmentation Subset -------------------------------------------------
+CRE_Fixed <- Data1 %>% filter(`Class Code` == "71", `Loan Rate Code` == 0, !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_Hybrid <- Data1 %>% filter(`Class Code` %in% c("71", "72") & 
+                                 `Loan Rate Code` %in% c("2","3202")& 
+                                 !`NonAccrual Code` %in% c("2", "3", "4") |
+                                 `Class Code`%in% c("71", "72")& 
+                                 `Loan Rate Code` %in% c("6", "2206", "3206", "4206")&
+                                 !`NonAccrual Code` %in% c("2", "3", "4")& 
+                                 Hybrid %in% "H") %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_LOC <- Data1 %>% filter(`Class Code` == "74" & 
+                              !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_Prime <- Data1 %>% filter(`Class Code` %in% c("71", "72") & 
+                                `Loan Rate Code` %in% c("5","11", "40")& 
+                                !`NonAccrual Code` %in% c("2", "3", "4") |
+                                `Class Code`%in% c("71", "72")& 
+                                `Loan Rate Code` %in% c("6", "2206", "3206", "4206")&
+                                !`NonAccrual Code` %in% c("2", "3", "4")& 
+                                !Hybrid %in% "H") %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_Libor <- Data1 %>% filter(`Class Code` == "71" & 
+                                `Loan Rate Code` %in% c("21", "26", "28", "30", "32", "3226", "4221") &
+                                !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+
+CRE_COFI <- Data1 %>% filter(`Class Code` == "71" & 
+                               `Loan Rate Code` == "34" &
+                               !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_MTA <- Data1 %>% filter(`Class Code` == "71" & 
+                              `Loan Rate Code` == "19" &
+                              !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_5Y_CMT <- Data1 %>% filter(`Class Code` == "71" & 
+                                 `Loan Rate Code` == "33" &
+                                 !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_FHLB <- Data1 %>% filter(`Class Code` == "71" & 
+                               `Loan Rate Code` == "37" &
+                               !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+         'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+CRE_SOFR <- Data1 %>% filter(`Class Code` == "71" & 
+                               `Loan Rate Code` %in% c("42", "45", "46", "47") &
+                               !`NonAccrual Code` %in% c("2", "3", "4")) %>% 
+  select('Orig. Date', 'Maturity', 'State', 'MTM Spread', 'LTV', 'FICO', 
+          'Class Code', 'Loan Rate Code', 'NonAccrual Code', 'Curr. Bal.', 'Loan Age')
+
+## CRE Visualization Subset -------------------------------------------------
+
+
+#Current Balance by Loan Age
+n=0
+for (i in CRE_Seg){
+  jpeg(paste("Current Balance by Loan Age", CRE_Seg_Name[n+1], ".jpg"))
+  chart <- (ggplot(data=i, aes(x=`Loan Age`, y=`Curr. Bal.`)) +
+    geom_bar(stat="identity", color = "blue", fill="blue")+
+    labs(title = paste(CRE_Seg_Name[n+1], " - Current Balance by Loan Age"), x="Loan Age", y="Current Balance") +
+    theme_minimal()+
+    scale_y_continuous(labels=scales::comma))
+  n=n+1
+  print(chart)
+  dev.off()
+}
+
+
+#Current Balance by State
+n=0
+for (i in CRE_Seg){
+  jpeg(paste("Current Balance by State", CRE_Seg_Name[n+1], ".jpg"))
+  chart <- (ggplot(data=i, aes(x=`State`, y=`Curr. Bal.`)) +
+              geom_bar(stat="identity", color = "blue", fill="blue")+
+              labs(title = paste(CRE_Seg_Name[n+1], " - Current Balance by State"), x="State", y="Current Balance") +
+              theme_minimal()+
+              scale_y_continuous(labels=scales::comma))
+  n=n+1
+  print(chart)
+  dev.off()
+}
+
+
+#Current Balance by MTM Spread
+n=0
+for (i in CRE_Seg){
+  jpeg(paste("Current Balance by MTM Spread", CRE_Seg_Name[n+1], ".jpg"))
+  chart <- (ggplot(data=i, aes(x=`MTM Spread`, y=`Curr. Bal.`)) +
+              geom_bar(stat="identity", color = "blue", fill="blue")+
+              labs(title = paste(CRE_Seg_Name[n+1], " - Current Balance by MTM Spread"), x="MTM Spread", y="Current Balance") +
+              theme_minimal()+
+              scale_y_continuous(labels=scales::comma))
+  n=n+1
+  print(chart)
+  dev.off()
+}
+
+
+#Current Balance by LTV
+n=0
+for (i in CRE_Seg){
+  jpeg(paste("Current Balance by LTV", CRE_Seg_Name[n+1], ".jpg"))
+  chart <- (ggplot(data=i, aes(x=`LTV`, y=`Curr. Bal.`)) +
+              geom_point(stat="identity", color = "blue", fill="blue")+
+              labs(title = paste(CRE_Seg_Name[n+1], " - Current Balance by LTV"), x="LTV", y="Current Balance") +
+              theme_minimal()+
+              scale_y_continuous(labels=scales::comma))
+  n=n+1
+  print(chart)
+  dev.off()
+}
+
+#Current Balance by FICO
+n=0
+for (i in CRE_Seg){
+  jpeg(paste("Current Balance by FICO", CRE_Seg_Name[n+1], ".jpg"))
+  chart <- (ggplot(data=i, aes(x=`FICO`, y=`Curr. Bal.`)) +
+              geom_point(stat="identity", color = "blue", fill="blue")+
+              labs(title = paste(CRE_Seg_Name[n+1], " - Current Balance by FICO"), x="FICO", y="Current Balance") +
+              theme_minimal()+
+              scale_y_continuous(labels=scales::comma))
+  n=n+1
+  print(chart)
+  dev.off()
+}
+
+
+## CRE Visualization Subset -------------------------------------------------
+length(which(Data1$FICO<350)) #2243 below 350 FICO
+length(which(Data1$FICO<350))/nrow(Data1) #22.76464%
+length(which(Data1$FICO>850)) #1 above 850 FICO
+
+#FICO < 350
+n=0
+for (i in CRE_Seg){
+  x = length(which(i$FICO <= 349))
+  print(paste(CRE_Seg_Name[n+1], " ",x, " acounts have below 350 FICO"))
+  n=n+1
+}
+
+
+
+
+#LTV = 0
+n=0
+for (i in CRE_Seg){
+  x = length(which(i$LTV == 0))
+  print(paste(CRE_Seg_Name[n+1], " ",x, " non-zero current balance acounts have 0.0% LTV "))
+  n=n+1
+}
+
+#LTV > 200%
+n=0
+for (i in CRE_Seg){
+  x = length(which(i$LTV >= 2))
+  print(paste(CRE_Seg_Name[n+1], " ",x, " non-zero current balance acounts have over 200% LTV "))
+  n=n+1
+}
