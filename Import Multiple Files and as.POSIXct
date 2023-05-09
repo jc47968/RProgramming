@@ -1,0 +1,51 @@
+library(plyr)
+library(dplyr)
+library(readr)
+
+setwd ("C:/Users/jc09975/Desktop/Model Validation/ImpairmentStudio/2020 Full Scope Validation/Data Validation")
+
+##Import files##
+#adjusted to use selected data elements#
+mydir <- "csv_folder"
+myfiles <- list.files(path = mydir, pattern = "*_adj.csv", full.names = TRUE)
+myfiles
+
+raw_data <- do.call(rbind, lapply(myfiles, read.csv, skip = 1, header = FALSE)) #combine all datasets
+colnames(raw_data) <- c('SysDate', 'PORT_NO', 'Name 1', 'ACCT NO', 'CLASS', 'Nac Bal', 'Maturity Date', 'Original Note Date')
+
+#Data Cleaning
+raw_data$`Maturity Date` <- as.POSIXct(raw_data$`Maturity Date`, format= "%m/%d/%Y") #time format
+raw_data$`Original Note Date`<- as.POSIXct(raw_data$`Original Note Date`, format= "%m/%d/%Y") #time format
+raw_data_acct <- raw_data
+raw_data_acct$`ACCT NO` <- as.numeric(as.character(raw_data_acct$`ACCT NO`))
+raw_data1 <- with(raw_data_acct, raw_data_acct[!(SysDate %in% c("", "SysDate") | is.na(SysDate)),]) #remove blanks and NAs in SysDate 
+
+#Unique Acct No#
+unique(length(raw_data1$`ACCT NO`)) #966720
+
+
+##Original to Maturity Date Test##
+#logic test to find maturity data earlier than origination dates#
+OrMat_data <- raw_data1
+OrMat_data$Orig_to_Mat_Days <- OrMat_data$`Maturity Date` - OrMat_data$`Original Note Date`
+OrMat_data_filter <- OrMat_data %>% filter(OrMat_data$Orig_to_Mat_Days < 0) #Zero Accounts with Maturity < Origination
+
+##Missing Data##
+#Find missing class, origination date, and maturity date data#
+sum(is.na(raw_data1$CLASS)) #0
+sum(is.na(raw_data1$SysDate)) #0
+sum(is.na(raw_data1$`Original Note Date`)) #2
+sum(is.na(raw_data1$`Maturity Date`)) #2
+#list missing accounts#
+miss_date <- raw_data1 %>% filter(is.na(`Original Note Date`))
+write.csv(miss_date, "Missing_Orig_Maturity_Dates.csv")
+
+##Class Code Movement##
+Class_Check <- raw_data1 %>% group_by(`ACCT NO`) %>% summarise(unique = length(unique(CLASS)))
+Class_Check1 <- Class_Check %>% filter(unique > 1)
+format(length(Class_Check1[,1])/unique(length(raw_data1$`ACCT NO`)), scientific = FALSE) #0.000001034426
+write.csv(Class_Check1, "CLASS Code Changes Summary.csv")
+
+Class_list <- raw_data1 %>% filter(`ACCT NO` %in% Class_Check1$`ACCT NO`) %>%  arrange(`ACCT NO`)
+write.csv(Class_list, "CLASS Code Change Detail.csv")
+
